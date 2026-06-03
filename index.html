@@ -199,13 +199,13 @@ data.forEach(r=>{
 
 const dt = new Date(r.date);
 
-if(dt.getFullYear() === year){
+if(dt.getFullYear() === currentYear){
 
     yearTotal += Number(r.pnl);
 
     monthly[dt.getMonth()] += Number(r.pnl);
 
-    if(dt.getMonth() === month){
+    if(dt.getMonth() === currentMonth){
         monthTotal += Number(r.pnl);
     }
 }
