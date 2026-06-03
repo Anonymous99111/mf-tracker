@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Groww MF P&L Tracker Pro</title>
+<title>Groww MF P&L Tracker Cloud</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -55,8 +54,6 @@ cursor:pointer;
 table{
 width:100%;
 border-collapse:collapse;
-overflow:hidden;
-border-radius:12px;
 }
 th,td{
 padding:12px;
@@ -79,102 +76,117 @@ background:rgba(255,255,255,.05);
 </head>
 <body>
 <div class="container">
-
 <div class="header">
 <h1>📈 Mutual Fund P&L Dashboard</h1>
-<div class="small">Enter only your daily Groww portfolio gain/loss.</div>
+<div class="small">Cloud Synced via Google Sheets</div>
 </div>
-
 <div class="card">
 <input type="date" id="date">
 <input type="number" id="pnl" placeholder="Daily P/L">
 <button onclick="addEntry()">➕ Add Entry</button>
 </div>
-
 <div class="grid">
 <div class="card"><div>Current Month</div><div id="monthTotal" class="metric">₹0</div></div>
 <div class="card"><div>Current Year</div><div id="yearTotal" class="metric">₹0</div></div>
 <div class="card"><div>Best Day</div><div id="bestDay" class="metric pos">₹0</div></div>
 <div class="card"><div>Worst Day</div><div id="worstDay" class="metric neg">₹0</div></div>
 </div>
-
 <div class="card">
 <h2>📅 Monthly Performance</h2>
 <div class="months" id="months"></div>
 </div>
-
 <div class="card">
 <h2>📋 Daily Entries</h2>
 <table>
-<thead><tr><th>Date</th><th>P/L</th></tr></thead>
+<thead>
+<tr>
+<th>Date</th>
+<th>P/L</th>
+</tr>
+</thead>
 <tbody id="entries"></tbody>
 </table>
 </div>
-
 </div>
-
 <script>
-let data = JSON.parse(localStorage.getItem('mfTrackerPro') || '[]');
-
-function addEntry(){
- let d=document.getElementById('date').value;
- let p=parseFloat(document.getElementById('pnl').value);
- if(!d || isNaN(p)) return;
- data.push({date:d,pnl:p});
- localStorage.setItem('mfTrackerPro',JSON.stringify(data));
- document.getElementById('pnl').value='';
- render();
-}
-
-function render(){
- let tbody=document.getElementById('entries');
- let monthsDiv=document.getElementById('months');
- tbody.innerHTML='';
- monthsDiv.innerHTML='';
-
- let year=new Date().getFullYear();
- let month=new Date().getMonth();
-
- let yearTotal=0,monthTotal=0;
- let best=-Infinity,worst=Infinity;
-
- let monthly=new Array(12).fill(0);
-
- data.sort((a,b)=>new Date(b.date)-new Date(a.date));
-
- data.forEach(r=>{
-   let dt=new Date(r.date);
-
-   if(dt.getFullYear()===year){
-      yearTotal+=r.pnl;
-      monthly[dt.getMonth()]+=r.pnl;
-      if(dt.getMonth()===month) monthTotal+=r.pnl;
-   }
-
-   best=Math.max(best,r.pnl);
-   worst=Math.min(worst,r.pnl);
-
-   tbody.innerHTML+=`<tr>
-      <td>${r.date}</td>
-      <td class="${r.pnl>=0?'pos':'neg'}">₹${r.pnl.toLocaleString()}</td>
-   </tr>`;
- });
-
- let names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
- monthly.forEach((v,i)=>{
-   monthsDiv.innerHTML+=`
-   <div class="month">
-      <div>${names[i]}</div>
-      <div class="${v>=0?'pos':'neg'}"><b>₹${v.toLocaleString()}</b></div>
-   </div>`;
- });
-
- document.getElementById('yearTotal').innerHTML='₹'+yearTotal.toLocaleString();
- document.getElementById('monthTotal').innerHTML='₹'+monthTotal.toLocaleString();
- document.getElementById('bestDay').innerHTML='₹'+(best===-Infinity?0:best).toLocaleString();
- document.getElementById('worstDay').innerHTML='₹'+(worst===Infinity?0:worst).toLocaleString();
-}
+const API_URL =
+"https://script.google.com/macros/s/AKfycbyRi7tRhl6QY299MsEyDaMGO4D1wBXRsIdLqBOPFgKZnXux1CUReLZBu76-rRsLDApu/exec";
+let data=[];
+async function loadData(){
+try{
+const res=await fetch(API_URL);
+const rows=await res.json();
+data=rows.slice(1).map(r=>({
+date:r[0],
+pnl:Number(r[1])
+}));
 render();
+}catch(err){
+console.error(err);
+}
+}
+async function addEntry(){
+let d=document.getElementById('date').value;
+let p=parseFloat(document.getElementById('pnl').value);
+if(!d || isNaN(p)) return;
+await fetch(API_URL,{
+method:'POST',
+body:JSON.stringify({
+date:d,
+pnl:p
+})
+});
+document.getElementById('pnl').value='';
+loadData();
+}
+function render(){
+let tbody=document.getElementById('entries');
+let monthsDiv=document.getElementById('months');
+tbody.innerHTML='';
+monthsDiv.innerHTML='';
+let year=new Date().getFullYear();
+let month=new Date().getMonth();
+let yearTotal=0;
+let monthTotal=0;
+let best=-Infinity;
+let worst=Infinity;
+let monthly=new Array(12).fill(0);
+data.sort((a,b)=>new Date(b.date)-new Date(a.date));
+data.forEach(r=>{
+let dt=new Date(r.date);
+if(dt.getFullYear()===year){
+yearTotal+=r.pnl;
+monthly[dt.getMonth()]+=r.pnl;
+if(dt.getMonth()===month){
+monthTotal+=r.pnl;
+}
+}
+best=Math.max(best,r.pnl);
+worst=Math.min(worst,r.pnl);
+tbody.innerHTML+=`
+<tr>
+<td>${r.date}</td>
+<td class="${r.pnl>=0?'pos':'neg'}">
+₹${r.pnl.toLocaleString()}
+</td>
+</tr>`;
+});
+let names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+monthly.forEach((v,i)=>{
+monthsDiv.innerHTML+=`
+<div class="month">
+<div>${names[i]}</div>
+<div class="${v>=0?'pos':'neg'}">
+<b>₹${v.toLocaleString()}</b>
+</div>
+</div>`;
+});
+document.getElementById('yearTotal').innerHTML='₹'+yearTotal.toLocaleString();
+document.getElementById('monthTotal').innerHTML='₹'+monthTotal.toLocaleString();
+document.getElementById('bestDay').innerHTML='₹'+(best===-Infinity?0:best).toLocaleString();
+document.getElementById('worstDay').innerHTML='₹'+(worst===Infinity?0:worst).toLocaleString();
+}
+loadData();
 </script>
 </body>
 </html>
