@@ -1,0 +1,180 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Groww MF P&L Tracker Pro</title>
+<style>
+*{box-sizing:border-box}
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;
+background:linear-gradient(135deg,#0f172a,#1e293b,#111827);
+color:#fff;
+padding:20px;
+}
+.container{max-width:1200px;margin:auto}
+.header{
+background:rgba(255,255,255,.08);
+backdrop-filter:blur(12px);
+padding:24px;
+border-radius:24px;
+margin-bottom:20px;
+box-shadow:0 8px 30px rgba(0,0,0,.3);
+}
+h1{margin:0}
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:16px;
+margin:20px 0;
+}
+.card{
+background:rgba(255,255,255,.08);
+backdrop-filter:blur(12px);
+padding:20px;
+border-radius:20px;
+box-shadow:0 8px 30px rgba(0,0,0,.25);
+}
+.metric{font-size:30px;font-weight:700;margin-top:8px}
+.pos{color:#4ade80}
+.neg{color:#f87171}
+input,button{
+padding:12px;
+border:none;
+border-radius:12px;
+margin:4px;
+}
+button{
+background:#22c55e;
+color:white;
+font-weight:700;
+cursor:pointer;
+}
+table{
+width:100%;
+border-collapse:collapse;
+overflow:hidden;
+border-radius:12px;
+}
+th,td{
+padding:12px;
+text-align:left;
+border-bottom:1px solid rgba(255,255,255,.1);
+}
+th{background:rgba(255,255,255,.08)}
+.months{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+gap:12px;
+}
+.month{
+padding:12px;
+border-radius:14px;
+background:rgba(255,255,255,.05);
+}
+.small{font-size:12px;opacity:.7}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+<h1>📈 Mutual Fund P&L Dashboard</h1>
+<div class="small">Enter only your daily Groww portfolio gain/loss.</div>
+</div>
+
+<div class="card">
+<input type="date" id="date">
+<input type="number" id="pnl" placeholder="Daily P/L">
+<button onclick="addEntry()">➕ Add Entry</button>
+</div>
+
+<div class="grid">
+<div class="card"><div>Current Month</div><div id="monthTotal" class="metric">₹0</div></div>
+<div class="card"><div>Current Year</div><div id="yearTotal" class="metric">₹0</div></div>
+<div class="card"><div>Best Day</div><div id="bestDay" class="metric pos">₹0</div></div>
+<div class="card"><div>Worst Day</div><div id="worstDay" class="metric neg">₹0</div></div>
+</div>
+
+<div class="card">
+<h2>📅 Monthly Performance</h2>
+<div class="months" id="months"></div>
+</div>
+
+<div class="card">
+<h2>📋 Daily Entries</h2>
+<table>
+<thead><tr><th>Date</th><th>P/L</th></tr></thead>
+<tbody id="entries"></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+let data = JSON.parse(localStorage.getItem('mfTrackerPro') || '[]');
+
+function addEntry(){
+ let d=document.getElementById('date').value;
+ let p=parseFloat(document.getElementById('pnl').value);
+ if(!d || isNaN(p)) return;
+ data.push({date:d,pnl:p});
+ localStorage.setItem('mfTrackerPro',JSON.stringify(data));
+ document.getElementById('pnl').value='';
+ render();
+}
+
+function render(){
+ let tbody=document.getElementById('entries');
+ let monthsDiv=document.getElementById('months');
+ tbody.innerHTML='';
+ monthsDiv.innerHTML='';
+
+ let year=new Date().getFullYear();
+ let month=new Date().getMonth();
+
+ let yearTotal=0,monthTotal=0;
+ let best=-Infinity,worst=Infinity;
+
+ let monthly=new Array(12).fill(0);
+
+ data.sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+ data.forEach(r=>{
+   let dt=new Date(r.date);
+
+   if(dt.getFullYear()===year){
+      yearTotal+=r.pnl;
+      monthly[dt.getMonth()]+=r.pnl;
+      if(dt.getMonth()===month) monthTotal+=r.pnl;
+   }
+
+   best=Math.max(best,r.pnl);
+   worst=Math.min(worst,r.pnl);
+
+   tbody.innerHTML+=`<tr>
+      <td>${r.date}</td>
+      <td class="${r.pnl>=0?'pos':'neg'}">₹${r.pnl.toLocaleString()}</td>
+   </tr>`;
+ });
+
+ let names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+ monthly.forEach((v,i)=>{
+   monthsDiv.innerHTML+=`
+   <div class="month">
+      <div>${names[i]}</div>
+      <div class="${v>=0?'pos':'neg'}"><b>₹${v.toLocaleString()}</b></div>
+   </div>`;
+ });
+
+ document.getElementById('yearTotal').innerHTML='₹'+yearTotal.toLocaleString();
+ document.getElementById('monthTotal').innerHTML='₹'+monthTotal.toLocaleString();
+ document.getElementById('bestDay').innerHTML='₹'+(best===-Infinity?0:best).toLocaleString();
+ document.getElementById('worstDay').innerHTML='₹'+(worst===Infinity?0:worst).toLocaleString();
+}
+render();
+</script>
+</body>
+</html>
