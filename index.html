@@ -196,28 +196,34 @@ const monthNames=[
 'December'
 ];
 data.forEach(r=>{
-let parts=String(r.date).split('-');
-if(parts.length!==3) return;
-let monthShort=parts[1];
-let year=parseInt(parts[2]);
-let monthIndex=[
-'Jan','Feb','Mar','Apr','May','Jun',
-'Jul','Aug','Sep','Oct','Nov','Dec'
-].indexOf(monthShort);
-if(year===currentYear){
-yearTotal+=Number(r.pnl);
-if(monthIndex>=0){
-monthly[monthIndex]+=Number(r.pnl);
-if(monthIndex===currentMonth){
-monthTotal+=Number(r.pnl);
+
+const dt = new Date(r.date);
+
+if(dt.getFullYear() === year){
+
+    yearTotal += Number(r.pnl);
+
+    monthly[dt.getMonth()] += Number(r.pnl);
+
+    if(dt.getMonth() === month){
+        monthTotal += Number(r.pnl);
+    }
 }
-}
-}
-best=Math.max(best,Number(r.pnl));
-worst=Math.min(worst,Number(r.pnl));
-tbody.innerHTML+=`
+
+best = Math.max(best, Number(r.pnl));
+worst = Math.min(worst, Number(r.pnl));
+
+const displayDate =
+dt.toLocaleDateString('en-IN',{
+    day:'2-digit',
+    month:'long',
+    year:'numeric',
+    timeZone:'Asia/Kolkata'
+});
+
+tbody.innerHTML += `
 <tr>
-<td>${r.date}</td>
+<td>${displayDate}</td>
 <td class="${r.pnl>=0?'pos':'neg'}">
 ₹${Number(r.pnl).toLocaleString('en-IN')}
 </td>
