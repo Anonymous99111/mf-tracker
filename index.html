@@ -13,7 +13,10 @@ background:linear-gradient(135deg,#0f172a,#1e293b,#111827);
 color:#fff;
 padding:20px;
 }
-.container{max-width:1200px;margin:auto}
+.container{
+max-width:1200px;
+margin:auto;
+}
 .header{
 background:rgba(255,255,255,.08);
 backdrop-filter:blur(12px);
@@ -22,7 +25,9 @@ border-radius:24px;
 margin-bottom:20px;
 box-shadow:0 8px 30px rgba(0,0,0,.3);
 }
-h1{margin:0}
+h1{
+margin:0;
+}
 .grid{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
@@ -36,9 +41,17 @@ padding:20px;
 border-radius:20px;
 box-shadow:0 8px 30px rgba(0,0,0,.25);
 }
-.metric{font-size:30px;font-weight:700;margin-top:8px}
-.pos{color:#4ade80}
-.neg{color:#f87171}
+.metric{
+font-size:30px;
+font-weight:700;
+margin-top:8px;
+}
+.pos{
+color:#4ade80;
+}
+.neg{
+color:#f87171;
+}
 input,button{
 padding:12px;
 border:none;
@@ -60,10 +73,12 @@ padding:12px;
 text-align:left;
 border-bottom:1px solid rgba(255,255,255,.1);
 }
-th{background:rgba(255,255,255,.08)}
+th{
+background:rgba(255,255,255,.08);
+}
 .months{
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
 gap:12px;
 }
 .month{
@@ -71,7 +86,10 @@ padding:12px;
 border-radius:14px;
 background:rgba(255,255,255,.05);
 }
-.small{font-size:12px;opacity:.7}
+.small{
+font-size:12px;
+opacity:.7;
+}
 </style>
 </head>
 <body>
@@ -86,10 +104,22 @@ background:rgba(255,255,255,.05);
 <button onclick="addEntry()">➕ Add Entry</button>
 </div>
 <div class="grid">
-<div class="card"><div>Current Month</div><div id="monthTotal" class="metric">₹0</div></div>
-<div class="card"><div>Current Year</div><div id="yearTotal" class="metric">₹0</div></div>
-<div class="card"><div>Best Day</div><div id="bestDay" class="metric pos">₹0</div></div>
-<div class="card"><div>Worst Day</div><div id="worstDay" class="metric neg">₹0</div></div>
+<div class="card">
+<div>Current Month</div>
+<div id="monthTotal" class="metric">₹0</div>
+</div>
+<div class="card">
+<div>Current Year</div>
+<div id="yearTotal" class="metric">₹0</div>
+</div>
+<div class="card">
+<div>Best Day</div>
+<div id="bestDay" class="metric pos">₹0</div>
+</div>
+<div class="card">
+<div>Worst Day</div>
+<div id="worstDay" class="metric neg">₹0</div>
+</div>
 </div>
 <div class="card">
 <h2>📅 Monthly Performance</h2>
@@ -144,47 +174,73 @@ let tbody=document.getElementById('entries');
 let monthsDiv=document.getElementById('months');
 tbody.innerHTML='';
 monthsDiv.innerHTML='';
-let year=new Date().getFullYear();
-let month=new Date().getMonth();
+let currentYear=new Date().getFullYear();
+let currentMonth=new Date().getMonth();
 let yearTotal=0;
 let monthTotal=0;
 let best=-Infinity;
 let worst=Infinity;
 let monthly=new Array(12).fill(0);
-data.sort((a,b)=>new Date(b.date)-new Date(a.date));
+const monthNames=[
+'January',
+'February',
+'March',
+'April',
+'May',
+'June',
+'July',
+'August',
+'September',
+'October',
+'November',
+'December'
+];
 data.forEach(r=>{
-let dt=new Date(r.date);
-if(dt.getFullYear()===year){
-yearTotal+=r.pnl;
-monthly[dt.getMonth()]+=r.pnl;
-if(dt.getMonth()===month){
-monthTotal+=r.pnl;
+let parts=String(r.date).split('-');
+if(parts.length!==3) return;
+let monthShort=parts[1];
+let year=parseInt(parts[2]);
+let monthIndex=[
+'Jan','Feb','Mar','Apr','May','Jun',
+'Jul','Aug','Sep','Oct','Nov','Dec'
+].indexOf(monthShort);
+if(year===currentYear){
+yearTotal+=Number(r.pnl);
+if(monthIndex>=0){
+monthly[monthIndex]+=Number(r.pnl);
+if(monthIndex===currentMonth){
+monthTotal+=Number(r.pnl);
 }
 }
-best=Math.max(best,r.pnl);
-worst=Math.min(worst,r.pnl);
+}
+best=Math.max(best,Number(r.pnl));
+worst=Math.min(worst,Number(r.pnl));
 tbody.innerHTML+=`
 <tr>
 <td>${r.date}</td>
 <td class="${r.pnl>=0?'pos':'neg'}">
-₹${r.pnl.toLocaleString()}
+₹${Number(r.pnl).toLocaleString('en-IN')}
 </td>
 </tr>`;
 });
-let names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-monthly.forEach((v,i)=>{
+monthNames.forEach((name,index)=>{
+let value=monthly[index];
 monthsDiv.innerHTML+=`
 <div class="month">
-<div>${names[i]}</div>
-<div class="${v>=0?'pos':'neg'}">
-<b>₹${v.toLocaleString()}</b>
+<div>${name}</div>
+<div class="${value>=0?'pos':'neg'}">
+<b>₹${value.toLocaleString('en-IN')}</b>
 </div>
 </div>`;
 });
-document.getElementById('yearTotal').innerHTML='₹'+yearTotal.toLocaleString();
-document.getElementById('monthTotal').innerHTML='₹'+monthTotal.toLocaleString();
-document.getElementById('bestDay').innerHTML='₹'+(best===-Infinity?0:best).toLocaleString();
-document.getElementById('worstDay').innerHTML='₹'+(worst===Infinity?0:worst).toLocaleString();
+document.getElementById('yearTotal').innerHTML=
+'₹'+yearTotal.toLocaleString('en-IN');
+document.getElementById('monthTotal').innerHTML=
+'₹'+monthTotal.toLocaleString('en-IN');
+document.getElementById('bestDay').innerHTML=
+'₹'+(best===-Infinity?0:best).toLocaleString('en-IN');
+document.getElementById('worstDay').innerHTML=
+'₹'+(worst===Infinity?0:worst).toLocaleString('en-IN');
 }
 loadData();
 </script>
