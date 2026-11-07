@@ -7,6 +7,7 @@
 <title>MF P&L Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{
   --glass:rgba(255,255,255,.07);
@@ -165,6 +166,14 @@ h2{margin:0;font-size:18px;font-weight:700}
 }
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
+/* ---------- trend chart ---------- */
+.seg{display:flex;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:12px;padding:3px}
+.seg button{border:none;background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:9px;cursor:pointer;transition:background .2s,color .2s}
+.seg button.on{background:rgba(255,255,255,.14);color:var(--text)}
+.chart-wrap{position:relative;height:300px}
+.chart-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px}
+@media(max-width:560px){.chart-wrap{height:240px}}
+
 /* ---------- lock ---------- */
 .head-actions{display:flex;gap:8px;align-items:center}
 .icon-btn{min-height:48px;min-width:48px;border-radius:14px;border:1px solid var(--border);background:rgba(255,255,255,.08);color:var(--text);font-size:18px;cursor:pointer}
@@ -237,6 +246,20 @@ h2{margin:0;font-size:18px;font-weight:700}
       <div class="hint" id="worstHint">&nbsp;</div>
     </div>
   </div>
+
+  <section class="glass">
+    <div class="sec-head">
+      <h2>📊 P&amp;L Trend</h2>
+      <div class="seg" id="chartMode">
+        <button data-mode="daily" class="on">Daily</button>
+        <button data-mode="monthly">Monthly</button>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="trend"></canvas>
+      <div class="chart-empty" id="chartEmpty" hidden>No entries for this year yet</div>
+    </div>
+  </section>
 
   <section class="glass">
     <div class="sec-head">
@@ -439,6 +462,76 @@ function render(){
         <div class="m-meta">${M.days ? `${M.days} days · ${M.green} green` : 'No entries'}</div>
       </button>`;
   }).join('');
+
+  renderChart(yr, monthly);
+}
+
+/* ---------- trend chart ---------- */
+let chart, chartMode = 'daily';
+
+function compactINR(v){
+  const a = Math.abs(v), s = v < 0 ? '-' : '';
+  if (a >= 1e7) return s + '₹' + (a/1e7).toFixed(1) + 'Cr';
+  if (a >= 1e5) return s + '₹' + (a/1e5).toFixed(1) + 'L';
+  if (a >= 1e3) return s + '₹' + Math.round(a/1e3) + 'K';
+  return s + '₹' + Math.round(a);
+}
+
+function renderChart(yr, monthly){
+  const canvas = $('trend');
+  if (!window.Chart || !canvas) return;
+
+  let labels, bars;
+  if (chartMode === 'daily'){
+    labels = yr.map(r => niceDate(r));
+    bars = yr.map(r => r.pnl);
+  } else {
+    const idx = monthly.map((M,i) => M.days ? i : -1).filter(i => i >= 0);
+    labels = idx.map(i => MONTHS[i].slice(0,3));
+    bars = idx.map(i => Math.round(monthly[i].sum * 100) / 100);
+  }
+  let run = 0;
+  const cum = bars.map(v => Math.round((run += v) * 100) / 100);
+
+  $('chartEmpty').hidden = bars.length > 0;
+  if (chart) chart.destroy();
+
+  const muted = 'rgba(241,245,249,.55)';
+  chart = new Chart(canvas, {
+    data:{
+      labels,
+      datasets:[
+        {
+          type:'line', label:'Cumulative P/L', data:cum, order:0,
+          borderColor:'#a5b4fc', borderWidth:2.5, tension:.3,
+          backgroundColor:'rgba(129,140,248,.14)', fill:'origin',
+          pointRadius: chartMode === 'daily' ? 0 : 3,
+          pointHoverRadius:5, pointBackgroundColor:'#a5b4fc'
+        },
+        {
+          type:'bar', label: chartMode === 'daily' ? 'Daily P/L' : 'Monthly P/L', data:bars, order:1,
+          backgroundColor: bars.map(v => v >= 0 ? 'rgba(52,211,153,.75)' : 'rgba(251,113,133,.75)'),
+          borderRadius:4, maxBarThickness:32
+        }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ labels:{ color:muted, usePointStyle:true, boxWidth:8, font:{ family:'Inter' } } },
+        tooltip:{
+          backgroundColor:'rgba(15,20,35,.92)', borderColor:'rgba(255,255,255,.15)', borderWidth:1,
+          padding:10, titleFont:{ family:'Inter' }, bodyFont:{ family:'Inter' },
+          callbacks:{ label: c => ` ${c.dataset.label}: ${money(c.parsed.y, true)}` }
+        }
+      },
+      scales:{
+        x:{ ticks:{ color:muted, maxRotation:0, autoSkip:true, maxTicksLimit:8, font:{ family:'Inter' } }, grid:{ display:false } },
+        y:{ ticks:{ color:muted, callback: v => compactINR(v), font:{ family:'Inter' } }, grid:{ color:'rgba(255,255,255,.06)' } }
+      }
+    }
+  });
 }
 
 /* ---------- month sheet ---------- */
@@ -498,6 +591,13 @@ $('lockForm').addEventListener('submit', e => {
   hideLock();
   loadData();
 });
+$('chartMode').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || b.dataset.mode === chartMode) return;
+  chartMode = b.dataset.mode;
+  document.querySelectorAll('#chartMode button').forEach(x => x.classList.toggle('on', x === b));
+  render();
+});
 $('lockBtn').addEventListener('click', () => {
   setKey(''); data = []; render(); showLock();
 });
@@ -506,6 +606,7 @@ loadData();
 </script>
 </body>
 </html>
+
 
 
 
