@@ -759,6 +759,12 @@ body.privacy .us-fx b{filter:blur(8px)}
 .dd-sub2{font-size:12px;color:var(--muted);margin:2px 0 14px}
 /* tall forms scroll inside the sheet on short screens */
 .sheet .entry{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+/* hide button: cover every number in the US section too */
+body.privacy #tab-us :is(.metric,.hint,.us-val,.us-pill,.us-fx,#usAsOf,.usi .t,.usi .r,.dep .t,.dep-r,.hl-i > div,.dd-sub2,.us-chart,.sp-bar,.sp-legend,.nw-note,.stat .label + .metric),
+body.privacy #usdOverlay :is(.dd-big,.dd-sub,.metric,.hint),
+body.privacy #nwCard :is(.nw-total,.nw-row,.nw-note,.nw-bar){filter:blur(9px)}
+body.privacy #tab-us .us-val,body.privacy #tab-us .us-chart{filter:blur(12px)}
+body.privacy #tab-us .metric.nb,body.privacy #tab-us .stat .metric{filter:blur(9px)}
 </style>
 </head>
 <body>
@@ -1150,7 +1156,7 @@ body.privacy .us-fx b{filter:blur(8px)}
     <div class="sheet-head">
       <div>
         <h2 id="usTitle">Add US entry</h2>
-        <div class="hint">Two kinds: what you put in, and what it is worth</div>
+        <div class="hint">Enter amounts in US dollars. Two kinds: what you put in, and what it is worth</div>
       </div>
       <button class="close" id="usClose" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
@@ -2722,17 +2728,24 @@ $('lgList').addEventListener('click', e => {
    ========================================================= */
 const US_CACHE = 'mf_tracker_us_cache', US_CUR = 'mf_tracker_us_cur';
 let snaps = [], snapOk = false, snapAsked = false, snapAuto = false;
+let fx = null;
 let usRows = [], usCur = 'USD', usChart = null, usBars = null, usDDc = null, usKind = 'value', usLoaded = false, usSeries = null;
 try{ if (localStorage.getItem(US_CUR) === 'INR') usCur = 'INR'; }catch(e){}
 
-function usMoney(n, sign = false){
-  const inr = usCur === 'INR', sym = inr ? '₹' : '$';
+/* Your US entries are always in US dollars. The $ / ₹ switch only changes how they are shown:
+   ₹ converts at the live rate (and falls back to $ until the rate has loaded). */
+const inrOn = () => usCur === 'INR' && !!fx;
+const usK = () => inrOn() ? fx.rate : 1;
+function usFmt(n, sign, inr){
+  const sym = inr ? '₹' : '$';
   const abs = Math.abs(n).toLocaleString(inr ? 'en-IN' : 'en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
   if (n < 0) return '-' + sym + abs;
   return (sign && n > 0 ? '+' : '') + sym + abs;
 }
+const usMoney = (n, sign = false) => usFmt(n * usK(), sign, inrOn());
+const usD = n => usFmt(n, false, false); // always dollars, for the things you type in
 function usCompact(v){
-  const inr = usCur === 'INR', sym = inr ? '₹' : '$', a = Math.abs(v), sg = v < 0 ? '-' : '';
+  const inr = inrOn(), sym = inr ? '₹' : '$', a = Math.abs(v), sg = v < 0 ? '-' : '';
   if (inr){
     if (a >= 1e7) return sg + sym + (a / 1e7).toFixed(1) + 'Cr';
     if (a >= 1e5) return sg + sym + (a / 1e5).toFixed(1) + 'L';
@@ -2805,7 +2818,7 @@ const usShort = k => new Date(k + 'T12:00:00Z').toLocaleDateString('en-IN', { da
 
 function renderUS(){
   document.querySelectorAll('#usCur button').forEach(b => b.classList.toggle('on', b.dataset.c === usCur));
-  document.querySelectorAll('.usc').forEach(e => e.textContent = usCur === 'INR' ? '₹' : '$');
+  document.querySelectorAll('.usc').forEach(e => e.textContent = '$');
   const pts = buildUS(); usSeries = pts;
   const last = pts[pts.length - 1];
   const lastInv = [...usRows].reverse().find(r => r.kind === 'invested');
@@ -2904,12 +2917,12 @@ function drawUS(pts){
   usChart = new Chart($('usChart'), {
     type:'line',
     data:{ labels, datasets:[
-      { label:'Value', data:pts.map(p => p.val), borderColor:'#a5b4fc', borderWidth:2.5, tension:.25, backgroundColor:'rgba(129,140,248,.14)', fill:'origin', pointRadius:few ? 3 : 0, pointHoverRadius:5, pointBackgroundColor:'#a5b4fc' },
-      { label:'Invested', data:pts.map(p => p.inv), borderColor:'rgba(241,245,249,.7)', borderWidth:2, borderDash:[6, 5], stepped:true, pointRadius:0, fill:false }
+      { label:'Value', data:pts.map(p => p.val * usK()), borderColor:'#a5b4fc', borderWidth:2.5, tension:.25, backgroundColor:'rgba(129,140,248,.14)', fill:'origin', pointRadius:few ? 3 : 0, pointHoverRadius:5, pointBackgroundColor:'#a5b4fc' },
+      { label:'Invested', data:pts.map(p => p.inv * usK()), borderColor:'rgba(241,245,249,.7)', borderWidth:2, borderDash:[6, 5], stepped:true, pointRadius:0, fill:false }
     ] },
     options:{ ...common,
       plugins:{ legend:{ labels:{ color:muted, usePointStyle:true, boxWidth:8, font:{ family:'Inter' } } },
-        tooltip:{ ...tip, callbacks:{ label: c => ` ${c.dataset.label}: ${usMoney(c.parsed.y)}` } } },
+        tooltip:{ ...tip, callbacks:{ label: c => ` ${c.dataset.label}: ${usFmt(c.parsed.y, false, inrOn())}` } } },
       scales:{ ...common.scales, y:{ ticks:{ color:muted, callback: v => usCompact(v), font:{ family:'Inter' } }, grid:{ color:'rgba(255,255,255,.06)' } } } }
   });
   usDDc = new Chart($('usDD'), {
@@ -2934,7 +2947,7 @@ function drawUS(pts){
 function setUsKind(k){
   usKind = k;
   document.querySelectorAll('#usKind button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
-  $('usAmtLabel').innerHTML = (k === 'value' ? 'Value (' : 'Total invested (') + `<span class="usc">${usCur === 'INR' ? '₹' : '$'}</span>)`;
+  $('usAmtLabel').innerHTML = (k === 'value' ? 'Value (' : 'Total invested (') + `<span class="usc">$</span>)`;
   $('usKindNote').textContent = k === 'value'
     ? 'What the whole portfolio is worth on the date you pick.'
     : 'The TOTAL you have put in so far (not just today\'s deposit). Enter a new total whenever you add money.';
@@ -2980,7 +2993,7 @@ async function saveUS(){
     return;
   }
   const dup = usRows.find(r => r.key === d && r.kind === usKind);
-  if (dup && !(await askConfirm('Check this entry', `${usNice(d)} already has a ${usKind === 'value' ? 'value' : 'total invested'} entry of ${usMoney(dup.amt)}. Saving replaces it in the numbers, and the older row stays in your sheet.`))) return;
+  if (dup && !(await askConfirm('Check this entry', `${usNice(d)} already has a ${usKind === 'value' ? 'value' : 'total invested'} entry of ${usD(dup.amt)}. Saving replaces it in the numbers, and the older row stays in your sheet.`))) return;
   const btn = $('usSave');
   btn.disabled = true; btn.textContent = 'Saving…';
   try{
@@ -2989,7 +3002,7 @@ async function saveUS(){
     if (out.status === 'unauthorized'){ closeUs(); setKey(''); showLock('Key rejected, enter it again'); return; }
     if (out.status !== 'success'){ toast('Save failed: ' + (out.message || 'did you update the Apps Script?')); return; }
     closeUs();
-    toast(`Saved ${usKind === 'value' ? 'value' : 'invested'} ${usMoney(a)} for ${usShort(d)}`);
+    toast(`Saved ${usKind === 'value' ? 'value' : 'invested'} ${usD(a)} for ${usShort(d)}`);
     await loadUS(getKey());
   }catch(err){
     console.error(err);
@@ -3002,7 +3015,7 @@ $('usSave').addEventListener('click', saveUS);
 $('usDelete').addEventListener('click', async () => {
   if (!editUS) return;
   const e = editUS;
-  if (!(await askConfirm('Delete this entry?', `${e.kind === 'value' ? 'Value' : 'Total invested'} ${usMoney(e.amt)} on ${usNice(usRows.find(r => r.row === e.row)?.key || ymd.format(new Date()))}\nThis removes the row from your Google Sheet.`, 'Delete'))) return;
+  if (!(await askConfirm('Delete this entry?', `${e.kind === 'value' ? 'Value' : 'Total invested'} ${usD(e.amt)} on ${usNice(usRows.find(r => r.row === e.row)?.key || ymd.format(new Date()))}\nThis removes the row from your Google Sheet.`, 'Delete'))) return;
   toast('Deleting…', 0, true);
   const ok = await sendChange({ type:'delete', sheet:'us', row:e.row, old:{ date:e.raw, kind:e.kind, amount:e.amt } }, 'Entry deleted');
   if (ok){ closeUs(); await loadUS(getKey()); }
@@ -3169,7 +3182,6 @@ renderSnaps();
    update detail card, and the combined net worth card
    ========================================================= */
 const FX_STORE = 'mf_tracker_fx';
-let fx = null;
 try{ const c = JSON.parse(localStorage.getItem(FX_STORE) || 'null'); if (c && c.rate > 0) fx = c; }catch(e){}
 async function loadFX(){
   if (fx && Date.now() - fx.at < 6 * 36e5) return;
@@ -3190,7 +3202,7 @@ async function loadFX(){
     }catch(e){}
   }
 }
-const usInr = v => usCur === 'INR' ? v : fx ? v * fx.rate : null;
+const usInr = v => fx ? v * fx.rate : null;
 
 /* annualised return from your deposits and the latest value */
 function usXirr(pts){
@@ -3227,7 +3239,13 @@ function renderUSExtras(pts, last){
 
   /* FX line on the hero */
   const fxBox = $('usFx');
-  if (usCur === 'USD' && fx){
+  if (inrOn()){
+    fxBox.style.display = '';
+    fxBox.innerHTML = `Shown in ₹: your <b>${usD(last.val)}</b> converted at ₹${fx.rate.toFixed(2)} per $${fx.date ? ' · ' + fx.date : ''}. Every amount uses today's rate.`;
+  } else if (usCur === 'INR'){
+    fxBox.style.display = '';
+    fxBox.innerHTML = 'Waiting for the $ → ₹ exchange rate, showing dollars for now…';
+  } else if (fx){
     fxBox.style.display = '';
     fxBox.innerHTML = `≈ <b>${money(Math.round(last.val * fx.rate)).replace('.00', '')}</b>${last.inv > 0 ? ` · ${last.pl >= 0 ? 'profit' : 'loss'} ≈ <b>${money(Math.round(Math.abs(last.pl) * fx.rate)).replace('.00', '')}</b>` : ''} at ₹${fx.rate.toFixed(2)} per $${fx.date ? ' · ' + fx.date : ''}`;
   } else fxBox.style.display = 'none';
@@ -3328,7 +3346,7 @@ function openUsd(key){
       ${tile('Rank', rank ? '#' + rank : '—', rank ? `of ${ch.length} updates (1 = best)` : 'needs 2 updates', '', true)}
       ${tile('Below peak', p.dd >= -0.005 ? 'At peak' : pctTxt(p.dd, false), p.dd >= -0.005 ? 'a new high' : 'peak was ' + usShort(p.peakKey), p.dd < -0.005 ? 'neg' : 'pos', true)}
     </div>
-    ${usInr(p.val) !== null && usCur === 'USD' ? `<div class="dd-sub" style="margin-top:12px">≈ ${money(Math.round(usInr(p.val))).replace('.00', '')} at today's rate</div>` : ''}
+    ${usInr(p.val) !== null && !inrOn() ? `<div class="dd-sub" style="margin-top:12px">≈ ${money(Math.round(usInr(p.val))).replace('.00', '')} at today's rate</div>` : ''}
     <button class="ghost dd-go" id="usdEdit">✏️ Edit or delete this entry</button>`;
   $('usdEdit').addEventListener('click', () => { closeUsd(); openEditUS(p.src); });
   $('usdOverlay').classList.add('open');
@@ -3355,7 +3373,7 @@ function renderNW(){
   const waiting = lastUS && usV === null;
   const parts = [];
   if (mfV !== null) parts.push({ n:'🇮🇳 Mutual funds', v:mfV, c:'rgba(165,180,252,.85)', sub:`${snapLabel(snap.key)} snapshot` });
-  if (usV !== null) parts.push({ n:'🇺🇸 US stocks', v:usV, c:'rgba(52,211,153,.85)', sub:`${usMoney(lastUS.val)}${usCur === 'USD' && fx ? ' at ₹' + fx.rate.toFixed(2) : ''} · ${usShort(lastUS.key)}` });
+  if (usV !== null) parts.push({ n:'🇺🇸 US stocks', v:usV, c:'rgba(52,211,153,.85)', sub:`${usD(lastUS.val)}${fx ? ' at ₹' + fx.rate.toFixed(2) : ''} · ${usShort(lastUS.key)}` });
   const total = parts.reduce((a, x) => a + x.v, 0);
   $('nwTotal').textContent = waiting && !parts.length ? '—' : money(Math.round(total)).replace('.00', '');
   $('nwBar').innerHTML = parts.length > 1 ? parts.map(x => `<span style="width:${x.v / total * 100}%;background:${x.c}"></span>`).join('') : '';
