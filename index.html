@@ -734,6 +734,31 @@ body.privacy .snap-t,body.privacy .snap-s b,body.privacy .snap-d{filter:blur(9px
 .snap-actions{display:flex;gap:10px;flex-basis:100%}
 .snap-actions button{flex:1}
 .entry .field.half{flex:1 1 140px}
+
+/* US extras */
+.nw-total{font-size:clamp(28px,8.5vw,44px);font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap;margin:4px 0 12px}
+.nw-bar,.sp-bar{display:flex;height:16px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1)}
+.nw-bar span,.sp-bar span{display:block;height:100%}
+.nw-rows{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.nw-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}
+.nw-row .dotc{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
+.nw-row small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.nw-row b{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.nw-note{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.5}
+body.privacy .nw-total,body.privacy .nw-row b,body.privacy .dep-r{filter:blur(9px)}
+.sp-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:10px 0 12px}
+.sp-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.dep{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.06);min-height:56px}
+.dep .t{font-size:14px;font-weight:600}.dep .t small{display:block;color:var(--muted);font-weight:500;font-size:12px;margin-top:3px}
+.dep-r{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}.dep-r small{display:block;font-size:12px;margin-top:3px}
+#usdOverlay{z-index:55}
+.us-fx{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.4}
+.us-fx b{color:var(--text);font-variant-numeric:tabular-nums}
+body.privacy .us-fx b{filter:blur(8px)}
+.us-chart.dd{height:170px}
+.dd-sub2{font-size:12px;color:var(--muted);margin:2px 0 14px}
+/* tall forms scroll inside the sheet on short screens */
+.sheet .entry{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 </style>
 </head>
 <body>
@@ -835,6 +860,17 @@ body.privacy .snap-t,body.privacy .snap-s b,body.privacy .snap-d{filter:blur(9px
       <div class="back" id="back-streak"></div>
     </div>
   </div>
+
+  <section class="glass" id="nwCard" style="display:none">
+    <div class="sec-head">
+      <h2><span class="emo">🌍</span>Net worth</h2>
+      <span class="tip">Mutual funds + US stocks, in ₹</span>
+    </div>
+    <div class="nw-total" id="nwTotal">—</div>
+    <div class="nw-bar" id="nwBar"></div>
+    <div class="nw-rows" id="nwRows"></div>
+    <div class="nw-note" id="nwNote"></div>
+  </section>
 
   <section class="glass">
     <div class="sec-head">
@@ -965,6 +1001,7 @@ body.privacy .snap-t,body.privacy .snap-s b,body.privacy .snap-d{filter:blur(9px
         <div class="label">🇺🇸 US Stock Portfolio</div>
         <div class="us-val" id="usVal">—</div>
         <div class="us-sub" id="usAsOf">&nbsp;</div>
+        <div class="us-fx" id="usFx" style="display:none"></div>
         <div class="us-pill" id="usTotalPill" style="display:none"></div>
       </div>
       <div class="seg" id="usCur" role="group" aria-label="Currency">
@@ -975,7 +1012,23 @@ body.privacy .snap-t,body.privacy .snap-s b,body.privacy .snap-d{filter:blur(9px
     <div class="us-tri" id="usTri"></div>
   </section>
 
+  <section class="glass">
+    <div class="sec-head">
+      <h2><span class="emo">✨</span>US highlights</h2>
+      <span class="tip">Written from your entries</span>
+    </div>
+    <div class="hl" id="usHl"></div>
+  </section>
+
   <div class="stats small" id="usStats"></div>
+
+  <section class="glass">
+    <div class="sec-head">
+      <h2><span class="emo">🧩</span>Money added vs earned</h2>
+      <span class="tip">How much of the value is profit</span>
+    </div>
+    <div id="usSplit"></div>
+  </section>
 
   <section class="glass">
     <div class="sec-head">
@@ -983,6 +1036,15 @@ body.privacy .snap-t,body.privacy .snap-s b,body.privacy .snap-d{filter:blur(9px
       <span class="tip">Gap between the lines = your profit</span>
     </div>
     <div class="us-chart"><canvas id="usChart"></canvas></div>
+  </section>
+
+  <section class="glass">
+    <div class="sec-head">
+      <h2><span class="emo">🌊</span>Drawdown</h2>
+      <span class="tip">How far below the previous peak</span>
+    </div>
+    <div class="dd-sub2" id="usDDsub"></div>
+    <div class="us-chart dd"><canvas id="usDD"></canvas></div>
   </section>
 
   <section class="glass">
@@ -995,9 +1057,17 @@ body.privacy .snap-t,body.privacy .snap-s b,body.privacy .snap-d{filter:blur(9px
 
   <section class="glass">
     <div class="sec-head">
+      <h2><span class="emo">💵</span>Return on each deposit</h2>
+      <span class="tip" style="flex-basis:100%">Estimated: how each top-up has grown since it went in</span>
+    </div>
+    <div id="usDeps"></div>
+  </section>
+
+  <section class="glass">
+    <div class="sec-head">
       <h2><span class="emo">🧾</span>US history</h2>
       <button class="us-btn" id="usAddBtn">＋ Add US entry</button>
-      <span class="tip" style="flex-basis:100%">Tap any entry to edit or delete it</span>
+      <span class="tip" style="flex-basis:100%">Tap an update for details, or a deposit to edit or delete it</span>
     </div>
     <div id="usList"></div>
   </section>
@@ -1104,6 +1174,25 @@ body.privacy .snap-t,body.privacy .snap-s b,body.privacy .snap-d{filter:blur(9px
       <button class="primary" id="usSave">Save US Entry</button>
       <button class="danger" id="usDelete" style="display:none">🗑 Delete this entry</button>
     </div>
+  </div>
+</div>
+
+<!-- US update detail -->
+<div class="overlay" id="usdOverlay">
+  <div class="glass sheet" role="dialog" aria-modal="true" aria-labelledby="usdTitle">
+    <div class="grab"></div>
+    <div class="sheet-head">
+      <div>
+        <h2 id="usdTitle">Update</h2>
+        <div class="hint" id="usdSub"></div>
+      </div>
+      <div class="sheet-nav">
+        <button class="close" id="usdPrev" aria-label="Previous update"><svg class="ic" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <button class="close" id="usdNext" aria-label="Next update"><svg class="ic" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+        <button class="close" id="usdClose" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+    </div>
+    <div class="dd-body" id="usdBody"></div>
   </div>
 </div>
 
@@ -2035,10 +2124,12 @@ attachSwipeClose('addOverlay', closeAdd);
 attachSwipeClose('dayOverlay', closeDay);
 attachSwipeClose('usOverlay', closeUs);
 attachSwipeClose('snapOverlay', closeSnap);
+attachSwipeClose('usdOverlay', closeUsd);
 $('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeMonth(); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape'){
     if ($('snapOverlay').classList.contains('open')){ closeSnap(); return; }
+    if ($('usdOverlay').classList.contains('open')){ closeUsd(); return; }
     if ($('usOverlay').classList.contains('open')){ closeUs(); return; }
     if ($('dayOverlay').classList.contains('open')){ closeDay(); return; }
     closeMonth(); closeAdd();
@@ -2081,7 +2172,7 @@ let privOn = false;
 try{ privOn = localStorage.getItem(PRIV_STORE) === '1'; }catch(e){}
 setPrivacy(privOn);
 $('lockBtn').addEventListener('click', () => {
-  closeAdd(); closeMonth(); closeDay(); closeUs(); closeSnap(); setKey(''); data = []; usRows = []; snaps = []; snapOk = false; buildDays(); render(); showLock();
+  closeAdd(); closeMonth(); closeDay(); closeUs(); closeSnap(); closeUsd(); setKey(''); data = []; usRows = []; snaps = []; snapOk = false; buildDays(); render(); showLock();
 });
 
 /* ---------- tabs ---------- */
@@ -2111,7 +2202,7 @@ function showTab(name, dir = 0){
   try{ localStorage.setItem(TAB_STORE, name); }catch(e){}
   movePill();
   if (name === 'analysis' && chart) requestAnimationFrame(() => chart.resize());
-  if (name === 'us') requestAnimationFrame(() => { usChart && usChart.resize(); usBars && usBars.resize(); });
+  if (name === 'us') requestAnimationFrame(() => { usChart && usChart.resize(); usBars && usBars.resize(); usDDc && usDDc.resize(); });
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 $('tabs').addEventListener('click', e => {
@@ -2630,7 +2721,8 @@ $('lgList').addEventListener('click', e => {
    - value:    what the portfolio is worth on a date
    ========================================================= */
 const US_CACHE = 'mf_tracker_us_cache', US_CUR = 'mf_tracker_us_cur';
-let usRows = [], usCur = 'USD', usChart = null, usBars = null, usKind = 'value', usLoaded = false, usSeries = null;
+let snaps = [], snapOk = false, snapAsked = false, snapAuto = false;
+let usRows = [], usCur = 'USD', usChart = null, usBars = null, usDDc = null, usKind = 'value', usLoaded = false, usSeries = null;
 try{ if (localStorage.getItem(US_CUR) === 'INR') usCur = 'INR'; }catch(e){}
 
 function usMoney(n, sign = false){
@@ -2676,6 +2768,7 @@ async function loadUS(key){
     try{ localStorage.setItem(US_CACHE, JSON.stringify({ at:Date.now(), rows })); }catch(e){}
     usRows = parseUS(rows); usLoaded = true;
     renderUS();
+    loadFX();
   }catch(err){ console.error(err); }
 }
 
@@ -2690,14 +2783,20 @@ function buildUS(){
     inv.forEach(r => { if (r.key <= k) invested = r.amt; });
     return { key:k, val:byDate[k].amt, inv:invested, src:byDate[k] };
   });
+  let peak = 1, peakKey = pts.length ? pts[0].key : '';
   pts.forEach((p, i) => {
     p.pl = p.val - p.inv;
     p.plPct = p.inv > 0 ? p.pl / p.inv * 100 : null;
+    p.idx = 1;
     if (i > 0){
       const q = pts[i - 1];
       p.chg = p.val - q.val - (p.inv - q.inv);
       p.chgPct = q.val > 0 ? p.chg / q.val * 100 : null;
+      p.idx = q.idx * (1 + (p.chgPct === null ? 0 : p.chgPct / 100)); // growth of the portfolio, ignoring money added
     }
+    if (p.idx >= peak){ peak = p.idx; peakKey = p.key; }
+    p.peakKey = peakKey;
+    p.dd = (p.idx / peak - 1) * 100;
   });
   return pts;
 }
@@ -2717,6 +2816,10 @@ function renderUS(){
     $('usTotalPill').style.display = 'none';
     $('usTri').innerHTML = '';
     $('usStats').innerHTML = '';
+    $('usFx').style.display = 'none';
+    $('usHl').innerHTML = '<div class="hint">Highlights appear once you have entries.</div>';
+    $('usSplit').innerHTML = ''; $('usDeps').innerHTML = ''; $('usDDsub').textContent = '';
+    renderNW();
     $('usList').innerHTML = `<div class="us-empty">${usLoaded
       ? 'Tap <b>＋ Add US entry</b> and add two things:<br>1) <b>Total invested</b> so far, and<br>2) the <b>Value</b> of the portfolio on a date.<br><br>If this stays empty after saving, update the Apps Script with the new Code.gs.'
       : 'Loading…'}</div>`;
@@ -2763,11 +2866,13 @@ function renderUS(){
   $('usStats').innerHTML = cards;
 
   drawUS(pts);
+  renderUSExtras(pts, last);
+  renderNW();
 
   // history, newest first: value entries with their change, and invested entries
   const items = [];
   pts.forEach(p => items.push({ key:p.key, order:1, html:
-    `<button class="usi" data-row="${p.src.row}"><div class="chip"><b>${p.key.slice(8)}</b><small>${new Date(p.key + 'T12:00:00Z').toLocaleDateString('en-US', { month:'short', timeZone:'UTC' })}</small></div>
+    `<button class="usi" data-vk="${p.key}"><div class="chip"><b>${p.key.slice(8)}</b><small>${new Date(p.key + 'T12:00:00Z').toLocaleDateString('en-US', { month:'short', timeZone:'UTC' })}</small></div>
       <div class="t">${usMoney(p.val)}<small>P/L ${usMoney(p.pl, true)}${p.plPct !== null ? ' · ' + pctTxt(p.plPct) : ''}</small></div>
       <div class="r ${p.chg === undefined ? 'zero' : cls(p.chg)}">${p.chgPct !== null && p.chgPct !== undefined ? pctTxt(p.chgPct) : '—'}<small>${p.chg !== undefined ? usMoney(p.chg, true) : 'first entry'}</small></div></button>` }));
   let prevInv = null;
@@ -2793,7 +2898,8 @@ function drawUS(pts){
   const tip = { backgroundColor:'rgba(15,20,35,.92)', borderColor:'rgba(255,255,255,.15)', borderWidth:1, padding:10, titleFont:{ family:'Inter' }, bodyFont:{ family:'Inter' } };
   if (usChart) usChart.destroy();
   if (usBars) usBars.destroy();
-  if (!pts.length){ usChart = usBars = null; return; }
+  if (usDDc) usDDc.destroy();
+  if (!pts.length){ usChart = usBars = usDDc = null; return; }
   const few = pts.length <= 20;
   usChart = new Chart($('usChart'), {
     type:'line',
@@ -2805,6 +2911,13 @@ function drawUS(pts){
       plugins:{ legend:{ labels:{ color:muted, usePointStyle:true, boxWidth:8, font:{ family:'Inter' } } },
         tooltip:{ ...tip, callbacks:{ label: c => ` ${c.dataset.label}: ${usMoney(c.parsed.y)}` } } },
       scales:{ ...common.scales, y:{ ticks:{ color:muted, callback: v => usCompact(v), font:{ family:'Inter' } }, grid:{ color:'rgba(255,255,255,.06)' } } } }
+  });
+  usDDc = new Chart($('usDD'), {
+    type:'line',
+    data:{ labels, datasets:[{ label:'Below peak', data:pts.map(p => Number(p.dd.toFixed(2))), borderColor:'rgba(251,113,133,.95)', borderWidth:2, backgroundColor:'rgba(251,113,133,.16)', fill:'origin', tension:.2, pointRadius:few ? 3 : 0, pointBackgroundColor:'#fb7185' }] },
+    options:{ ...common,
+      plugins:{ legend:{ display:false }, tooltip:{ ...tip, callbacks:{ label: c => ` ${pctTxt(c.parsed.y, false)} from peak` } } },
+      scales:{ ...common.scales, y:{ max:0, ticks:{ color:muted, callback: v => v + '%', font:{ family:'Inter' } }, grid:{ color:'rgba(255,255,255,.06)' } } } }
   });
   const ch = pts.filter(p => p.chgPct !== null && p.chgPct !== undefined);
   usBars = new Chart($('usBars'), {
@@ -2897,6 +3010,7 @@ $('usDelete').addEventListener('click', async () => {
 $('usList').addEventListener('click', e => {
   const b = e.target.closest('.usi');
   if (!b) return;
+  if (b.dataset.vk){ openUsd(b.dataset.vk); return; }
   const r = usRows.find(x => x.row === Number(b.dataset.row));
   if (r) openEditUS(r);
 });
@@ -2918,7 +3032,7 @@ renderUS();
    Monthly snapshots (Sheet2): Month | Total | Profit | XIRR | Comment
    ========================================================= */
 const SNAP_CACHE = 'mf_tracker_snap_cache', SNAP_SKIP = 'mf_tracker_snap_skip', SNAP_SNOOZE = 'mf_tracker_snap_snooze';
-let snaps = [], snapOk = false, snapAsked = false, snapAuto = false;
+
 const curMonthKey = `${todayY}-${pad2(todayM)}`;
 const MONTH_FULL = MONTHS;
 
@@ -2971,6 +3085,7 @@ async function loadSnap(key){
   }catch(err){ console.error(err); }
 }
 function renderSnaps(){
+  renderNW();
   const box = $('snapList');
   if (!snaps.length){
     box.innerHTML = `<div class="us-empty">${snapOk ? 'No snapshots yet. Tap <b>＋ Add / update</b>.' : 'Snapshots appear here once the updated Apps Script is deployed and Sheet2 has the header row Month, Total, Profit, XIRR, Comment.'}</div>`;
@@ -3048,6 +3163,215 @@ $('snapLater').addEventListener('click', () => { try{ localStorage.setItem(SNAP_
 $('snapSkip').addEventListener('click', () => { try{ localStorage.setItem(SNAP_SKIP, curMonthKey); }catch(e){} closeSnap(); toast(`Skipped ${MONTHS[todayM - 1]}`); });
 ['snapTotal','snapProfit','snapXirr'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') saveSnap(); }));
 renderSnaps();
+
+/* =========================================================
+   US extras: FX rate, highlights, money split, drawdown, deposits, XIRR,
+   update detail card, and the combined net worth card
+   ========================================================= */
+const FX_STORE = 'mf_tracker_fx';
+let fx = null;
+try{ const c = JSON.parse(localStorage.getItem(FX_STORE) || 'null'); if (c && c.rate > 0) fx = c; }catch(e){}
+async function loadFX(){
+  if (fx && Date.now() - fx.at < 6 * 36e5) return;
+  const b = Math.floor(Date.now() / (6 * 36e5));
+  const tries = [
+    async () => { const j = await (await fetch('https://open.er-api.com/v6/latest/USD?b=' + b)).json(); return j && j.rates && j.rates.INR ? { rate:j.rates.INR, date:String(j.time_last_update_utc || '').slice(5, 16) } : null; },
+    async () => { const j = await (await fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=INR&b=' + b)).json(); return j && j.rates && j.rates.INR ? { rate:j.rates.INR, date:j.date || '' } : null; }
+  ];
+  for (const t of tries){
+    try{
+      const v = await t();
+      if (v && v.rate > 0){
+        fx = { rate:v.rate, date:v.date, at:Date.now() };
+        try{ localStorage.setItem(FX_STORE, JSON.stringify(fx)); }catch(e){}
+        renderUS();
+        return;
+      }
+    }catch(e){}
+  }
+}
+const usInr = v => usCur === 'INR' ? v : fx ? v * fx.rate : null;
+
+/* annualised return from your deposits and the latest value */
+function usXirr(pts){
+  const last = pts[pts.length - 1];
+  const inv = usRows.filter(r => r.kind === 'invested' && r.key <= last.key);
+  const D = k => Date.UTC(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8, 10)) / 864e5;
+  const flows = [];
+  let prev = 0;
+  inv.forEach(r => { const d = r.amt - prev; prev = r.amt; if (d) flows.push({ t:D(r.key), a:-d }); });
+  if (!flows.length) flows.push({ t:D(pts[0].key), a:-pts[0].val });
+  flows.push({ t:D(last.key), a:last.val });
+  const t0 = flows[0].t, span = flows[flows.length - 1].t - t0;
+  if (span < 1) return { rate:null, span };
+  const f = r => flows.reduce((sum, c) => sum + c.a / Math.pow(1 + r, (c.t - t0) / 365), 0);
+  let lo = -0.99, hi = 20, flo = f(lo), fhi = f(hi);
+  if (isNaN(flo) || isNaN(fhi) || flo * fhi > 0) return { rate:null, span };
+  for (let i = 0; i < 200; i++){
+    const mid = (lo + hi) / 2, fm = f(mid);
+    if (Math.abs(fm) < 1e-7) { lo = hi = mid; break; }
+    if (flo * fm < 0) hi = mid; else { lo = mid; flo = fm; }
+  }
+  return { rate:(lo + hi) / 2 * 100, span };
+}
+
+function renderUSExtras(pts, last){
+  const M = (n, sign) => `<b class="m ${cls(n)}">${usMoney(round2(n), sign)}</b>`;
+  const first = pts[0];
+  const ch = pts.filter(p => p.chgPct !== null && p.chgPct !== undefined);
+  const X = usXirr(pts);
+  const invs = usRows.filter(r => r.kind === 'invested');
+  let prevI = 0; const topups = [];
+  invs.forEach(r => { const d = r.amt - prevI; prevI = r.amt; topups.push({ ...r, delta:d }); });
+  const adds = topups.filter((t, i) => i > 0 && t.delta > 0);
+
+  /* FX line on the hero */
+  const fxBox = $('usFx');
+  if (usCur === 'USD' && fx){
+    fxBox.style.display = '';
+    fxBox.innerHTML = `≈ <b>${money(Math.round(last.val * fx.rate)).replace('.00', '')}</b>${last.inv > 0 ? ` · ${last.pl >= 0 ? 'profit' : 'loss'} ≈ <b>${money(Math.round(Math.abs(last.pl) * fx.rate)).replace('.00', '')}</b>` : ''} at ₹${fx.rate.toFixed(2)} per $${fx.date ? ' · ' + fx.date : ''}`;
+  } else fxBox.style.display = 'none';
+
+  /* extra stat card: annualised return */
+  let xirrTxt = '—', xirrHint = 'needs deposits and a value update';
+  if (X.rate !== null && X.span >= 30){ xirrTxt = pctTxt(X.rate); xirrHint = X.span < 90 ? 'short history, treat with care' : 'a year, counting when each deposit went in'; }
+  else if (X.span > 0 && X.span < 30){ xirrHint = 'needs 30+ days of history'; }
+  $('usStats').insertAdjacentHTML('beforeend',
+    `<div class="glass stat"><div class="label">📅 Annualised (XIRR)</div><div class="metric ${X.rate !== null && X.span >= 30 ? cls(X.rate) : ''} nb">${xirrTxt}</div><div class="hint">${xirrHint}</div></div>`);
+
+  /* highlights */
+  const out = [];
+  if (last.inv > 0 && last.plPct !== null){
+    out.push([last.pl >= 0 ? '🟢' : '🔴', `You are <b class="${cls(last.pl)}">${last.pl >= 0 ? 'up' : 'down'} ${Math.abs(last.plPct).toFixed(2)}%</b> on ${usMoney(last.inv)} invested: ${M(last.pl, true)}.`]);
+  }
+  if (ch.length){
+    const l = ch[ch.length - 1], best = ch.reduce((a, b) => b.chgPct > a.chgPct ? b : a), worst = ch.reduce((a, b) => b.chgPct < a.chgPct ? b : a);
+    out.push(['🕒', `Latest update (${usShort(l.key)}): <b class="${cls(l.chg)}">${pctTxt(l.chgPct)}</b> (${M(l.chg, true)}).`]);
+    if (best.key !== worst.key) out.push(['🏆', `Best update <b>${pctTxt(best.chgPct)}</b> on ${usShort(best.key)}; weakest <b>${pctTxt(worst.chgPct)}</b> on ${usShort(worst.key)}.`]);
+    let run = 0; for (let i = ch.length - 1; i >= 0 && ch[i].chg > 0; i--) run++;
+    let lrun = 0; for (let i = ch.length - 1; i >= 0 && ch[i].chg < 0; i--) lrun++;
+    if (run >= 2) out.push(['🔥', `<b>${run} updates in a row</b> have been up.`]);
+    else if (lrun >= 2) out.push(['🧊', `<b>${lrun} updates in a row</b> have been down.`]);
+  }
+  if (adds.length){
+    const sum = adds.reduce((a, t) => a + t.delta, 0);
+    out.push(['💵', `You added ${M(sum)} across <b>${adds.length}</b> top-up${adds.length > 1 ? 's' : ''}; the last one was on ${usShort(adds[adds.length - 1].key)}.`]);
+  }
+  if (X.rate !== null && X.span >= 30) out.push(['📅', `Counting when each deposit went in, your money is growing about <b class="${cls(X.rate)}">${pctTxt(X.rate)} a year</b> (XIRR).`]);
+  const mdd = pts.reduce((a, p) => p.dd < a.dd ? p : a, pts[0]);
+  if (pts.length > 1){
+    if (last.dd >= -0.005) out.push(['⛰️', `You are at a <b>new high</b> for the portfolio.`]);
+    else out.push(['🌊', `You are <b class="neg">${Math.abs(last.dd).toFixed(2)}% below</b> your peak on ${usShort(last.peakKey)}; the deepest dip so far was ${Math.abs(mdd.dd).toFixed(2)}%.`]);
+  }
+  const ago = Math.round((todayNum - Date.UTC(+last.key.slice(0, 4), +last.key.slice(5, 7) - 1, +last.key.slice(8, 10)) / 864e5));
+  if (ago >= 7) out.push(['⏰', `Your last value update was <b>${ago} days ago</b>. Add a fresh one to keep this current.`]);
+  $('usHl').innerHTML = out.slice(0, 8).map(([e, t]) => `<div class="hl-i"><span class="hl-e">${e}</span><div>${t}</div></div>`).join('');
+
+  /* money added vs earned */
+  let sp = '';
+  if (last.inv > 0){
+    const gain = last.pl >= 0, base = gain ? last.val : last.inv;
+    const a = Math.max(0, Math.min(100, (gain ? last.inv : last.val) / base * 100)), b = 100 - a;
+    sp += `<div class="sp-bar"><span style="width:${a}%;background:rgba(165,180,252,.8)"></span><span style="width:${b}%;background:${gain ? 'rgba(52,211,153,.85)' : 'rgba(251,113,133,.85)'}"></span></div>
+      <div class="sp-legend"><span><i style="background:rgba(165,180,252,.8)"></i>${gain ? 'Money you added' : 'Value left'}</span><span><i style="background:${gain ? 'rgba(52,211,153,.85)' : 'rgba(251,113,133,.85)'}"></i>${gain ? 'Earned by the market' : 'Lost'}</span></div>
+      <div class="us-tri">
+        <div class="mini"><div class="label">Money added</div><div class="metric">${usMoney(last.inv)}</div><div class="hint">${adds.length ? 'start + ' + adds.length + ' top-up' + (adds.length > 1 ? 's' : '') : 'starting amount'}</div></div>
+        <div class="mini"><div class="label">${gain ? 'Earned' : 'Lost'}</div><div class="metric ${cls(last.pl)}">${usMoney(Math.abs(last.pl))}</div><div class="hint">${pctTxt(last.plPct)} on money added</div></div>
+        <div class="mini"><div class="label">Profit share</div><div class="metric ${gain ? 'pos' : ''} nb">${gain ? Math.round(last.pl / last.val * 100) + '%' : '—'}</div><div class="hint">${gain ? 'of today\'s value is profit' : 'no profit yet'}</div></div>
+      </div>`;
+  } else sp = '<div class="us-empty">Add a <b>Total invested</b> entry to see this.</div>';
+  $('usSplit').innerHTML = sp;
+
+  /* drawdown subtitle */
+  $('usDDsub').innerHTML = pts.length > 1
+    ? `Now <b class="${last.dd < -0.005 ? 'neg' : 'pos'}">${last.dd >= -0.005 ? 'at the peak' : pctTxt(last.dd, false) + ' from peak'}</b> · deepest dip <b class="neg">${pctTxt(mdd.dd, false)}</b> (${usShort(mdd.peakKey)} → ${usShort(mdd.key)}). Money you add does not count as growth.`
+    : 'Needs two value updates.';
+
+  /* return on each deposit */
+  const rows = [];
+  topups.forEach((t, i) => {
+    if (t.delta <= 0) return;
+    if (t.key >= last.key && i > 0){ rows.push({ t, pending:true }); return; }
+    const baseP = [...pts].reverse().find(p => p.key < t.key) || first;
+    const f = last.idx / baseP.idx;
+    rows.push({ t, ret:(f - 1) * 100, gain:t.delta * (f - 1), start:i === 0 });
+  });
+  const dep = rows.map(r => `<div class="dep"><div class="chip"><b>${r.t.key.slice(8)}</b><small>${new Date(r.t.key + 'T12:00:00Z').toLocaleDateString('en-US', { month:'short', timeZone:'UTC' })}</small></div>
+      <div class="t">${r.t.start ? 'Starting amount' : 'Top-up'} ${usMoney(r.t.delta)}<small>${r.pending ? 'added after your latest value update' : r.start ? 'since your first value update' : 'since the update before it'}</small></div>
+      <div class="dep-r ${r.pending ? '' : cls(r.ret)}">${r.pending ? '—' : pctTxt(r.ret)}<small>${r.pending ? 'too new' : usMoney(r.gain, true)}</small></div></div>`).join('');
+  $('usDeps').innerHTML = dep
+    ? dep + '<div class="nw-note">An estimate: it assumes each deposit grew at the same rate as the whole portfolio.</div>'
+    : '<div class="us-empty">Add a <b>Total invested</b> entry and a value update to see this.</div>';
+}
+
+/* ----- one value update in detail ----- */
+let usdCur = '';
+function openUsd(key){
+  const pts = usSeries || [], i = pts.findIndex(p => p.key === key);
+  if (i < 0) return;
+  const p = pts[i]; usdCur = key;
+  $('usdPrev').disabled = i === 0; $('usdNext').disabled = i === pts.length - 1;
+  $('usdTitle').textContent = usNice(key);
+  $('usdSub').textContent = i === 0 ? 'First value update' : `Compared with ${usNice(pts[i - 1].key)}`;
+  const ch = pts.filter(x => x.chgPct !== null && x.chgPct !== undefined);
+  const rank = p.chgPct !== null && p.chgPct !== undefined ? [...ch].sort((a, b) => b.chgPct - a.chgPct).findIndex(x => x.key === key) + 1 : 0;
+  const tile = (l, v, h, tone = '', nb = false) => `<div class="mini"><div class="label">${l}</div><div class="metric ${tone}${nb ? ' nb' : ''}">${v}</div><div class="hint">${h}</div></div>`;
+  const big = p.chgPct !== null && p.chgPct !== undefined ? pctTxt(p.chgPct) : '—';
+  $('usdBody').innerHTML = `
+    <div class="dd-big ${p.chg === undefined ? '' : cls(p.chg)}">${big}</div>
+    <div class="dd-sub">${p.chg === undefined ? 'Starting point' : p.chg > 0 ? 'An up update' : p.chg < 0 ? 'A down update' : 'No change'}${p.chg !== undefined ? ' · ' + usMoney(p.chg, true) + ' (money you added is not counted)' : ''}</div>
+    <div class="dd-grid">
+      ${tile('Value', usMoney(p.val), 'on ' + usShort(p.key))}
+      ${tile('Invested', usMoney(p.inv), 'total put in by then')}
+      ${tile('Profit / loss', usMoney(p.pl, true), p.plPct !== null ? pctTxt(p.plPct) + ' on invested' : '', cls(p.pl))}
+      ${tile('Growth since start', pctTxt((p.idx - 1) * 100), 'money added not counted', cls(p.idx - 1))}
+      ${tile('Rank', rank ? '#' + rank : '—', rank ? `of ${ch.length} updates (1 = best)` : 'needs 2 updates', '', true)}
+      ${tile('Below peak', p.dd >= -0.005 ? 'At peak' : pctTxt(p.dd, false), p.dd >= -0.005 ? 'a new high' : 'peak was ' + usShort(p.peakKey), p.dd < -0.005 ? 'neg' : 'pos', true)}
+    </div>
+    ${usInr(p.val) !== null && usCur === 'USD' ? `<div class="dd-sub" style="margin-top:12px">≈ ${money(Math.round(usInr(p.val))).replace('.00', '')} at today's rate</div>` : ''}
+    <button class="ghost dd-go" id="usdEdit">✏️ Edit or delete this entry</button>`;
+  $('usdEdit').addEventListener('click', () => { closeUsd(); openEditUS(p.src); });
+  $('usdOverlay').classList.add('open');
+  document.body.classList.add('locked');
+}
+function closeUsd(){
+  $('usdOverlay').classList.remove('open');
+  if (!document.querySelector('.overlay.open')) document.body.classList.remove('locked');
+}
+$('usdClose').addEventListener('click', closeUsd);
+$('usdOverlay').addEventListener('click', e => { if (e.target.id === 'usdOverlay') closeUsd(); });
+$('usdPrev').addEventListener('click', () => { const i = (usSeries || []).findIndex(p => p.key === usdCur); if (i > 0) openUsd(usSeries[i - 1].key); });
+$('usdNext').addEventListener('click', () => { const s2 = usSeries || [], i = s2.findIndex(p => p.key === usdCur); if (i >= 0 && i < s2.length - 1) openUsd(s2[i + 1].key); });
+
+/* ----- combined net worth (mutual funds from your latest monthly snapshot + US at today's rate) ----- */
+function renderNW(){
+  const box = $('nwCard');
+  const snap = snaps.length ? snaps[snaps.length - 1] : null;
+  const pts = usSeries || [], lastUS = pts[pts.length - 1];
+  if (!snap && !lastUS){ box.style.display = 'none'; return; }
+  box.style.display = '';
+  const usV = lastUS ? usInr(lastUS.val) : null;
+  const mfV = snap ? snap.total : null;
+  const waiting = lastUS && usV === null;
+  const parts = [];
+  if (mfV !== null) parts.push({ n:'🇮🇳 Mutual funds', v:mfV, c:'rgba(165,180,252,.85)', sub:`${snapLabel(snap.key)} snapshot` });
+  if (usV !== null) parts.push({ n:'🇺🇸 US stocks', v:usV, c:'rgba(52,211,153,.85)', sub:`${usMoney(lastUS.val)}${usCur === 'USD' && fx ? ' at ₹' + fx.rate.toFixed(2) : ''} · ${usShort(lastUS.key)}` });
+  const total = parts.reduce((a, x) => a + x.v, 0);
+  $('nwTotal').textContent = waiting && !parts.length ? '—' : money(Math.round(total)).replace('.00', '');
+  $('nwBar').innerHTML = parts.length > 1 ? parts.map(x => `<span style="width:${x.v / total * 100}%;background:${x.c}"></span>`).join('') : '';
+  $('nwBar').style.display = parts.length > 1 ? '' : 'none';
+  $('nwRows').innerHTML = parts.map(x => `<div class="nw-row"><div><span class="dotc" style="background:${x.c}"></span>${x.n}<small>${x.sub}</small></div><b>${money(Math.round(x.v)).replace('.00', '')}${parts.length > 1 ? ` <small style="display:inline;color:var(--muted)">${Math.round(x.v / total * 100)}%</small>` : ''}</b></div>`).join('');
+  let note = '';
+  if (waiting) note = 'Waiting for the $ → ₹ exchange rate to add US stocks…';
+  else if (!snap) note = 'Add a monthly snapshot (Months tab) to include your mutual funds.';
+  else if (!lastUS) note = 'Add US entries (US tab) to include your US stocks.';
+  else {
+    const mp = snap.profit, up = lastUS.inv > 0 ? usInr(lastUS.pl) : null;
+    if (mp !== null && up !== null) note = `Profit so far across both: <b class="${cls(mp + up)}">${money(Math.round(mp + up), true).replace('.00', '')}</b>. `;
+    note += 'Mutual funds use your latest monthly snapshot; US uses its latest value at today\'s rate.';
+  }
+  $('nwNote').innerHTML = note;
+}
 
 /* ---------- skeleton placeholders on first load ---------- */
 if (!getCache()){
