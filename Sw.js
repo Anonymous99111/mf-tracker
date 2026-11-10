@@ -2,7 +2,7 @@
 // Your P&L data is never cached here: it comes live from Google Sheets,
 // and the page itself keeps the last synced copy for offline viewing.
 
-const CACHE = 'mf-pnl-v2';
+const CACHE = 'mf-pnl-v3';
 const CORE = [
   './',
   './index.html',
